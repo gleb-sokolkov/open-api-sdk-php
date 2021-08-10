@@ -1,5 +1,5 @@
 {
-	"name": "hotdog666/open-api-sdk-php",
+	"name": "business-ru/open-api-sdk-php",
 	"version": "1.0.1",
 	"description": "SDK для работы с Open API",
 	"type": "library",
