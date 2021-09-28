@@ -75,7 +75,7 @@ final class OpenClient
         $this->nonce = "nonce_" . str_replace(".", "", microtime(true));
         #Подключение к redis
         $cacheRedis = RedisAdapter::createConnection(
-            getenv('REDIS_DSN'),
+            "redis://redis:6379",
             ['class' => Client::class, 'timeout' => 3]
         );
         #Получаем ссылку от аккаунта
@@ -279,7 +279,7 @@ final class OpenClient
     }
 
     /**
-     * Метод выполняет запрос на печать чека возврата прихода на ККТ.
+     * Вернёт информацию о команде ФР
      * @param string $commandID - CommandID чека.
      * @return array Возвращает данные по command_id
      * @throws ClientExceptionInterface
