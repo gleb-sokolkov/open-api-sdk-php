@@ -19,7 +19,7 @@ composer require business-ru/open-api-sdk-php
 
 ## Принцип работы
 
-### Создаем Адаптер для работы с Open Api
+### Создаем файл для работы с Open Api
 
 ```php
 <?php
