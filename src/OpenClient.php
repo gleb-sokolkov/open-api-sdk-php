@@ -3,8 +3,7 @@
 namespace Open\Api;
 
 use JsonException;
-use Predis\Client;
-use Symfony\Component\Cache\Adapter\RedisAdapter;
+use Psr\SimpleCache\InvalidArgumentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -63,22 +62,17 @@ final class OpenClient
      * @param HttpClientInterface|null $client - Symfony http клиент
      * @throws ClientExceptionInterface
      * @throws DecodingExceptionInterface
+     * @throws JsonException
      * @throws RedirectionExceptionInterface
      * @throws ServerExceptionInterface
      * @throws TransportExceptionInterface
-     * @throws \JsonException
      */
     public function __construct(string $account, string $appID, string $secret, HttpClientInterface $client = null)
     {
         $this->appID = $appID;
         $this->secret = $secret;
         $this->nonce = "nonce_" . str_replace(".", "", microtime(true));
-        #Подключение к redis
-        $cacheRedis = RedisAdapter::createConnection(
-            "redis://redis:6379",
-            ['class' => Client::class, 'timeout' => 3]
-        );
-        #Получаем ссылку от аккаунта
+        # Получаем ссылку от аккаунта
         $this->account = $account;
         # HttpClient - выбирает транспорт cURL если расширение PHP cURL включено,
         # и возвращается к потокам PHP в противном случае
@@ -91,14 +85,8 @@ final class OpenClient
                     ]
                 ]
             );
-        #Проверяем, есть токен в cache или нет
-        if ($cacheRedis->exists('OpenTokenCache') === 0) {
-            #Добавляем токен в cache на 10 часов
-            $this->token = $cacheRedis->setex('OpenTokenCache', 83000, $this->getNewToken());
-        } else {
-            #Получаем текущий токен
-            $this->token = $cacheRedis->get('OpenTokenCache');
-        }
+        # Получаем токен
+        $this->token = $this->getNewToken();
     }
 
     /**
