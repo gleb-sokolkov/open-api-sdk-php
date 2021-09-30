@@ -8,7 +8,6 @@
 
 * PHP 7.4 и выше
 * PHP extension cURL
-* Extension Predis
 
 ## Установка
 
@@ -20,81 +19,16 @@ composer require business-ru/open-api-sdk-php
 
 ## Принцип работы
 
-Сохраняем данные 'account' , 'app_id' , 'secret_key' в Json файл.
-
-```json
-{
-	"account_url": "https://check-dev.class365.ru/open-api/v1/",
-	"app_id": "app_id",
-	"secret_key": "secret_key"
-}
-```
-
-### Необходимо получить Json данные.
-
-```php
-<?php
-
-    /**
-     * Наименование аккаунта
-     * @var string
-     */
-    protected string $account;
-
-    /**
-     * ID приложения (интеграции)
-     * @var mixed
-     */
-    protected $appID;
-
-    /**
-     * Секретный ключ приложения
-     * @var string
-     */
-    protected string $secretKey;
-
-    /**
-     * Установка параметров для работы с API
-     * @return void
-     * @throws Exception
-     */
-    protected function setConfig(): void
-    {
-        #Получаем данные внутри файла
-        $cfg = json_decode(file_get_contents('openApi.json'));
-        #Наименование аккаунта
-        $this->account = $cfg['account'];
-        #ID Приложения
-        $this->appID = $cfg['app_id'];
-        #Секретный ключ
-        $this->secretKey = $cfg['secret_key'];
-    }
-```
-
 ### Создаем Адаптер для работы с Open Api
 
 ```php
 <?php
-
-use Open\Api\OpenClient;
-
-    /**
-     * Инициализируем класс Open Api
-     * @var OpenClient
-     */
-    private OpenClient $openClient;
-
-    /**
-     * Получаем данные в виде массива
-     * @var mixed
-     */
-    protected $response;
-
-    public function __construct()
-    {
-        $this->setConfig();
-        $this->openClient = new OpenClient($this->account_url, $this->appID, $this->secretKey);
-    }
+# Подключаем автозагрузку
+require 'vendor/autoload.php';
+# Подключаем библиотеку Open Api Client
+include 'vendor/business-ru/open-api-sdk-php/src/OpenClient.php';
+# Создание экземпляра класса
+$openApiClient = new OpenClient($this->account_url,$this->appID,$this->secret_key);
 ```
 
 ### Примеры использования
@@ -103,133 +37,77 @@ use Open\Api\OpenClient;
 
 ```php
 <?php
-
-    /**
-     * Метод выполняет запрос на получение информации о состоянии системы.
-     * @return array
-     */
-    public function openApiStateSystem(): array
-    {
-        #Отправляем запрос
-        $this->response = $this->openClient->getStateSystem();
-        #Возвращаем ответ
-        return $this->response;
-    }
+$openApiClient->getStateSystem();
 ```
 
 #### Открытие смены
 
 ```php
 <?php
-
-    /**
-     * Метод отправляет запрос на открытие смены на ККТ.
-     * @param string $commandName - Кастомное наименование для запроса OpenShift
-     * @return array<string, mixed>
-     */
-    public function openApiOpenShift(string $commandName = "name"): array
-    {
-        #Отправляем запрос
-        $this->response = $this->openClient->openShift($commandName);
-        #Возвращаем ответ
-        return $this->response;
-    }
+$openApiClient->openShift();
 ```
 
 #### Закрытие смены
 
 ```php
 <?php
-
-    /**
-     * Метод отправляет запрос на закрытие смены на ККТ.
-     * @param string $commandName - Кастомное наименование для запроса CloseShift
-     * @return array<string, mixed>
-     */
-    public function openApiCloseShift(string $commandName = "name"): array
-    {
-        #Отправляем запрос
-        $this->response = $this->openClient->closeShift($commandName);
-        #Возвращаем ответ
-        return $this->response;
-    }
+$openApiClient->closeShift();
 ```
 
 #### Печать чека прихода
 
 ```php
 <?php
-
-    /**
-     * Метод выполняет запрос на печать чека прихода на ККТ.
-     * @param array $command - Сгенерированный command
-     * @return int - Возвращает command_id
-     */
-    public function openApiPrintCheck(array $command): int
-    {
-        #Отправляем запрос
-        $this->response = $this->openClient->printCheck($command);
-        $response = $this->response;
-        #Если запрос не прошел, выбрасываем исключение
-        if (isset($response["message"], $response["result"])) {
-            throw new Exception($response["message"], (int)$response["result"]);
-        }
-        #Получаем command_id
-        $commandID = $response["command_id"];
-        return $commandID;
-    }
+$command = [
+    "author" => "Тестовый кассир",
+    "smsEmail54FZ" => "+79173446170",
+    "c_num" => "1111222333",
+    "payed_cashless" => 1000,
+    "goods" => [
+        [
+            "count" => 2,
+            "price" => 500,
+            "sum" => 1000,
+            "name" => "Товар 1",
+            "nds_value" => 20,
+            "nds_not_apply" => false,
+            "payment_mode" => 1,
+            "item_type" => 1
+        ]
+    ]
+];
+$openApiClient->printCheck($command);
 ```
 
 #### Печать чека возврата прихода
 
 ```php
 <?php
-
-    /**
-     * Метод выполняет запрос на печать чека возврата прихода на ККТ.
-     * @param array<array> $command - Массив параметров чека.
-     * @return int - Возвращает command_id
-     */
-    public function openApiPrintPurchaseReturn(array $command): int
-    {
-        #Отправляем запрос
-        $this->response = $this->openClient->printPurchaseReturn($command);
-        $response = $this->response;
-        #Если запрос не прошел, выбрасываем исключение
-        if (isset($response["message"], $response["result"])) {
-            throw new Exception($response["message"], (int)$response["result"]);
-        }
-        #Получаем command_id
-        $commandID = $response["command_id"];
-        return $commandID;
-    }
+$command = [
+    "author" => "Тестовый кассир",
+    "smsEmail54FZ" => "+79173446170",
+    "c_num" => "1111222333",
+    "payed_cashless" => 1000,
+    "goods" => [
+        [
+            "count" => 2,
+            "price" => 500,
+            "sum" => 1000,
+            "name" => "Товар 1",
+            "nds_value" => 20,
+            "nds_not_apply" => false,
+            "payment_mode" => 1,
+            "item_type" => 1
+        ]
+    ]
+];
+$openApiClient->printPurchaseReturn($command);
 ```
 
 #### Вернёт информацию о команде ФР
 
 ```php
 <?php
-
-    /**
-     * Метод OpenApi, получение данных "fn_number, fiscal_document_number, receipt_datetime"
-     * @param string $commandID - command_id.
-     * @return array<array>
-     */
-    public function openApiDataCommandID(string $commandID): array
-    {
-        #Отправляем запрос для получения data по command_id до тех пор, пока не фискализируется запрос
-        $this->response = $this->openClient->dataCommandID($commandID);
-        #Получаем данные по command_id
-        $dataCommandID = $this->response;
-        if ($dataCommandID["fn_number"]
-            && $dataCommandID["fiscal_document_number"]
-            && $dataCommandID["receipt_datetime"]) {
-            #Возвращаем данные в виде массива
-            return $dataCommandID;
-        }
-        #Если время скрипта доходит до 14400 секунд, выдаем ошибку
-        if ((time() - $timeNow) >= 14400) {
-            throw new Exception('Данные не получены за 14400 секунд. Время для подключения истекло');
-        }
-    }
+$commandID = "command_id"
+$openApiClient->dataCommandID($commandID);
 ```
