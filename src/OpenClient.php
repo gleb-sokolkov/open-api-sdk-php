@@ -3,6 +3,9 @@
 namespace Open\Api;
 
 use JsonException;
+use Open\Api\Exception\SimpleFileCacheException;
+use Psr\SimpleCache\CacheInterface;
+use Psr\SimpleCache\InvalidArgumentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -10,6 +13,7 @@ use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Class OpenClient - SDK Open API
@@ -54,20 +58,29 @@ final class OpenClient
     private $nonce;
 
     /**
+     * @var CacheInterface|null
+     */
+    private ?CacheInterface $cache;
+
+    /**
      * SymfonyHttpClient constructor.
      * @param string $account - url аккаунта
      * @param string|null $appID - app_id интеграции
      * @param string|null $secret - Secret key интеграции
      * @param HttpClientInterface|null $client - Symfony http клиент
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
+     * @param CacheInterface|null $cacheInterface - Psr cache
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
      */
-    public function __construct(string $account, string $appID, string $secret, HttpClientInterface $client = null)
-    {
+    public function __construct(
+        string $account,
+        string $appID,
+        string $secret,
+        HttpClientInterface $client = null,
+        CacheInterface $cacheInterface = null
+    ) {
         $this->appID = $appID;
         $this->secret = $secret;
         $this->nonce = "nonce_" . str_replace(".", "", microtime(true));
@@ -84,8 +97,14 @@ final class OpenClient
                     ]
                 ]
             );
-        # Получаем токен
-        $this->token = $this->getNewToken();
+        # Сохраняем токен в файловый кэш
+        $this->cache = $cacheInterface ?? new SimpleFileCache();
+        if ($this->cache->has('OpenApiToken')) {
+            $this->token = $this->cache->get('OpenApiToken');
+        } else {
+            $this->token = $this->getNewToken();
+            $this->cache->set('OpenApiToken', $this->token, 83000);
+        }
     }
 
     /**
@@ -93,20 +112,51 @@ final class OpenClient
      * @param string $method - Метод
      * @param string $model - Модель
      * @param array $params - Параметры
-     * @return array
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return array - Ответ запроса Open API
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function request(string $method, string $model, array $params = []): array
     {
+        $response = $this->sendRequest($method, $model, $params);
+        # Получаем статус запроса
+        $statusCode = $response->getStatusCode();
+        # Токен просрочен
+        if ($statusCode === 401) {
+            $this->token = $this->getNewToken();
+            $this->cache->set('OpenApiToken', $this->token, 83000);
+            $response = $this->sendRequest($method, $model, $params);
+        }
+        # Запрос выполнен успешно
+        if ($statusCode === 200) {
+            return json_decode(
+                $response->getContent(false),
+                true,
+                512,
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+            );
+        }
+        #false - убрать throw Exception от Symfony.....
+        return $response->toArray(false);
+    }
+
+    /**
+     * Отправить HTTP запрос - клиентом
+     * @param string $method - Метод
+     * @param string $model - Модель
+     * @param array $params - Параметры
+     * @return ResponseInterface
+     * @throws TransportExceptionInterface
+     * @throws JsonException
+     */
+    private function sendRequest(string $method, string $model, array $params = []): ResponseInterface
+    {
         #Создаем ссылку
         $url = $this->account . $model;
         #Отправляем request запрос
-        $response = $this->client->request(
+        return $this->client->request(
             strtoupper($method),
             $url,
             [
@@ -116,28 +166,14 @@ final class OpenClient
                 'body' => json_encode($params, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
             ]
         );
-        #Получаем статус запроса
-        $statusCode = $response->getStatusCode();
-        if ($statusCode === 200) {
-            return json_decode(
-                $response->getContent(false),
-                true,
-                512,
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
-            );
-        }
-        #false - убрать throw от Symfony.....
-        return $response->toArray(false);
     }
 
     /**
      * Метод выполняет запрос на получение информации о состоянии системы.
      * @return array - Возвращаем ответ о состоянии системы
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function getStateSystem(): array
@@ -156,12 +192,10 @@ final class OpenClient
     /**
      * Метод отправляет запрос на открытие смены на ККТ.
      * @param string $commandName - Кастомное наименование для поля Command
-     * @return array Возвращает ответ открытия смены на ККТ
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return array - Возвращает ответ открытия смены на ККТ
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function openShift(string $commandName = "name"): array
@@ -186,12 +220,10 @@ final class OpenClient
     /**
      * Метод отправляет запрос на закрытие смены на ККТ.
      * @param string $commandName - Кастомное наименование для поля command
-     * @return array Возвращает ответ закрытия смены на ККТ
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return array - Возвращает ответ закрытия смены на ККТ
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function closeShift(string $commandName = "name"): array
@@ -215,12 +247,10 @@ final class OpenClient
     /**
      * Метод выполняет запрос на печать чека прихода на ККТ.
      * @param array $command - Массив параметров чека.
-     * @return array Возвращает command_id
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return array - Возвращает command_id
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function printCheck(array $command): array
@@ -242,12 +272,10 @@ final class OpenClient
     /**
      * Метод выполняет запрос на печать чека возврата прихода на ККТ.
      * @param array $command - Массив параметров чека.
-     * @return array Возвращает command_id
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return array - Возвращает command_id
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function printPurchaseReturn(array $command): array
@@ -267,13 +295,11 @@ final class OpenClient
 
     /**
      * Вернёт информацию о команде ФР
-     * @param string $commandID - CommandID чека.
-     * @return array Возвращает данные по command_id
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @param string $commandID - command_id чека.
+     * @return array - Возвращает данные по command_id
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     public function dataCommandID(string $commandID): array
@@ -291,12 +317,10 @@ final class OpenClient
 
     /**
      * Получаем токен
-     * @return string
-     * @throws ClientExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @return string - Возвращаем токен
+     * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
+     * @throws TransportExceptionInterface|RedirectionExceptionInterface
+     * @throws SimpleFileCacheException|InvalidArgumentException
      * @throws JsonException
      */
     private function getNewToken(): string
@@ -317,7 +341,7 @@ final class OpenClient
      * Метод генерирует подпись запроса и возвращает подпись.
      * @param array<array> $params - Параметры запроса для генерации на основе их подписи.
      * Не добавлять в json_encode - JSON_PRETTY_PRINT
-     * @return string Подпись запроса.
+     * @return string - Подпись запроса.
      * @throws JsonException
      */
     private function getSign(array $params): string
