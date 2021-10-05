@@ -35,9 +35,9 @@ final class OpenClient
 
     /**
      * Токен аккаунта
-     * @var string|null
+     * @var string
      */
-    private ?string $token;
+    private string $token;
 
     /**
      * app_id интеграции
@@ -65,8 +65,8 @@ final class OpenClient
     /**
      * SymfonyHttpClient constructor.
      * @param string $account - url аккаунта
-     * @param string|null $appID - app_id интеграции
-     * @param string|null $secret - Secret key интеграции
+     * @param string $appID - app_id интеграции
+     * @param string $secret - Secret key интеграции
      * @param HttpClientInterface|null $client - Symfony http клиент
      * @param CacheInterface|null $cacheInterface - Psr cache
      * @throws ClientExceptionInterface|DecodingExceptionInterface|ServerExceptionInterface
@@ -103,7 +103,7 @@ final class OpenClient
             $this->token = $this->cache->get('OpenApiToken');
         } else {
             $this->token = $this->getNewToken();
-            $this->cache->set('OpenApiToken', $this->token, 83000);
+            $this->cache->set('OpenApiToken', $this->token);
         }
     }
 
@@ -126,7 +126,7 @@ final class OpenClient
         # Токен просрочен
         if ($statusCode === 401) {
             $this->token = $this->getNewToken();
-            $this->cache->set('OpenApiToken', $this->token, 83000);
+            $this->cache->set('OpenApiToken', $this->token);
             $response = $this->sendRequest($method, $model, $params);
         }
         # Запрос выполнен успешно
