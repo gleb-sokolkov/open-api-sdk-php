@@ -125,18 +125,13 @@ final class OpenClient
         $statusCode = $response->getStatusCode();
         # Токен просрочен
         if ($statusCode === 401) {
+            if (array_key_exists('result', $response->toArray(false))) {
+                $ffdError = $response->toArray(false);
+                throw new JsonException($ffdError["message"], $ffdError["result"]);
+            }
             $this->token = $this->getNewToken();
             $this->cache->set('OpenApiToken', $this->token);
             $response = $this->sendRequest($method, $model, $params);
-        }
-        # Запрос выполнен успешно
-        if ($statusCode === 200) {
-            return json_decode(
-                $response->getContent(false),
-                true,
-                512,
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
-            );
         }
         #false - убрать throw Exception от Symfony.....
         return $response->toArray(false);
@@ -149,7 +144,6 @@ final class OpenClient
      * @param array $params - Параметры
      * @return ResponseInterface
      * @throws TransportExceptionInterface
-     * @throws JsonException
      */
     private function sendRequest(string $method, string $model, array $params = []): ResponseInterface
     {
@@ -163,7 +157,7 @@ final class OpenClient
                 'headers' => [
                     'sign' => $this->getSign($params)
                 ],
-                'body' => json_encode($params, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+                'body' => json_encode($params)
             ]
         );
     }
@@ -342,16 +336,10 @@ final class OpenClient
      * @param array<array> $params - Параметры запроса для генерации на основе их подписи.
      * Не добавлять в json_encode - JSON_PRETTY_PRINT
      * @return string - Подпись запроса.
-     * @throws JsonException
      */
     private function getSign(array $params): string
     {
         ksort($params);
-        return md5(
-            json_encode(
-                $params,
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
-            ) . $this->secret
-        );
+        return md5(json_encode($params) . $this->secret);
     }
 }
