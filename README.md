@@ -15,7 +15,7 @@
 composer require business-ru/open-api-sdk-php
 ```
 
-Документация: https://app.swaggerhub.com/apis/Business.Ru/check.business.ru/1.2.2
+Документация: https://app.swaggerhub.com/apis/Business.Ru/check.business.ru/
 
 ## Принцип работы
 
@@ -24,11 +24,14 @@ composer require business-ru/open-api-sdk-php
 ```php
 <?php
 # Подключаем автозагрузку
-require 'vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 # Подключаем библиотеку Open Api Client
-include 'vendor/business-ru/open-api-sdk-php/src/OpenClient.php';
+require_once __DIR__ . '/../vendor/business-ru/open-api-sdk-php/src/OpenClient.php';
 # Создание экземпляра класса
 $openApiClient = new OpenClient($this->account_url,$this->appID,$this->secret_key);
+# Пример ссылки
+# ФФД /v1/ - 1.05 /v2/ - 1.2
+$this->account_url - "https://base-url/open-api/v2/"
 ```
 
 ### Примеры использования
