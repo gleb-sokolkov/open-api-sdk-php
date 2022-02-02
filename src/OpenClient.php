@@ -123,6 +123,12 @@ final class OpenClient
         $response = $this->sendRequest($method, $model, $params);
         # Получаем статус запроса
         $statusCode = $response->getStatusCode();
+        if ($statusCode === 400) {
+            $openError = $response->toArray(false);
+            if (array_key_exists('error', $openError)) {
+                throw new JsonException($openError["error"]["text"], $openError["error"]["code"]);
+            }
+        }
         # Токен просрочен
         if ($statusCode === 401) {
             if (array_key_exists('result', $response->toArray(false))) {
@@ -132,6 +138,9 @@ final class OpenClient
             $this->token = $this->getNewToken();
             $this->cache->set('OpenApiToken', $this->token);
             $response = $this->sendRequest($method, $model, $params);
+        }
+        if ($statusCode === 500) {
+            throw new JsonException("500 Internal Server Error", 500);
         }
         #false - убрать throw Exception от Symfony.....
         return $response->toArray(false);
