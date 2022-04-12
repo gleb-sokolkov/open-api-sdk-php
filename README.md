@@ -63,7 +63,7 @@ $openApiClient->closeShift();
 <?php
 $command = [
     "author" => "Тестовый кассир",
-    "smsEmail54FZ" => "+79173446170",
+    "smsEmail54FZ" => "test@test.ru",
     "c_num" => "1111222333",
     "payed_cashless" => 1000,
     "goods" => [
@@ -88,7 +88,7 @@ $openApiClient->printCheck($command);
 <?php
 $command = [
     "author" => "Тестовый кассир",
-    "smsEmail54FZ" => "+79173446170",
+    "smsEmail54FZ" => "test@test.ru",
     "c_num" => "1111222333",
     "payed_cashless" => 1000,
     "goods" => [
