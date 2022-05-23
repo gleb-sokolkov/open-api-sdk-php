@@ -1,6 +1,6 @@
 {
   "name": "business-ru/open-api-sdk-php",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "SDK для работы с Open API",
   "type": "library",
   "license": "proprietary",
@@ -16,11 +16,14 @@
     "ext-json": "*",
     "symfony/http-client": "^5.3",
     "psr/simple-cache": "^1.0",
-    "psr/log": "^1.0"
+    "psr/log": "^1.0",
+    "monolog/monolog": "^2.6"
   },
   "autoload": {
     "psr-4": {
-      "Open\\Api\\": "src/"
+      "Open\\Api\\": "src/",
+      "Open\\Api\\Adapter\\": "src/Adapter/",
+      "Open\\Api\\Adapter\\IlluminateOpenApi\\": "src/Adapter/Illuminate/"
     }
   }
 }

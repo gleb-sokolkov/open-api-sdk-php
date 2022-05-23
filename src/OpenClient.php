@@ -3,6 +3,7 @@
 namespace Open\Api;
 
 use JsonException;
+use Open\Api\Adapter\IlluminateOpenApi\Log\Logger;
 use Open\Api\Exception\SimpleFileCacheException;
 use Psr\SimpleCache\CacheInterface;
 use Psr\SimpleCache\InvalidArgumentException;
@@ -126,13 +127,15 @@ final class OpenClient
         if ($statusCode === 400) {
             $openError = $response->toArray(false);
             if (array_key_exists('error', $openError)) {
+                $this->log('error', $openError["error"]["text"], $openError);
                 throw new JsonException($openError["error"]["text"], $openError["error"]["code"]);
             }
         }
         # Токен просрочен
         if ($statusCode === 401) {
-            if (array_key_exists('result', $response->toArray(false))) {
-                $ffdError = $response->toArray(false);
+            $ffdError = $response->toArray(false);
+            if (array_key_exists('result', $ffdError)) {
+                $this->log('error', $ffdError["message"], $ffdError);
                 throw new JsonException($ffdError["message"], $ffdError["result"]);
             }
             $this->token = $this->getNewToken();
@@ -140,6 +143,7 @@ final class OpenClient
             $response = $this->sendRequest($method, $model, $params);
         }
         if ($statusCode === 500) {
+            $this->log('critical', "500 Internal Server Error", [$response->getContent(false)]);
             throw new JsonException("500 Internal Server Error", 500);
         }
         #false - убрать throw Exception от Symfony.....
@@ -350,5 +354,11 @@ final class OpenClient
     {
         ksort($params);
         return md5(json_encode($params, JSON_UNESCAPED_UNICODE) . $this->secret);
+    }
+
+    private function log(string $level, string $message, array $context = []): void
+    {
+        $logger = new Logger();
+        $logger->$level($message, $context);
     }
 }
