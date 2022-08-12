@@ -100,11 +100,11 @@ final class OpenClient
             );
         # Сохраняем токен в файловый кэш
         $this->cache = $cacheInterface ?? new SimpleFileCache();
-        if ($this->cache->has('OpenApiToken')) {
-            $this->token = $this->cache->get('OpenApiToken');
+        if ($this->cache->has('OpenApiToken ' . $this->appID)) {
+            $this->token = $this->cache->get('OpenApiToken ' . $this->appID);
         } else {
             $this->token = $this->getNewToken();
-            $this->cache->set('OpenApiToken', $this->token);
+            $this->cache->set('OpenApiToken ' . $this->appID, $this->token);
         }
     }
 
@@ -139,7 +139,7 @@ final class OpenClient
                 throw new JsonException($ffdError["message"], $ffdError["result"]);
             }
             $this->token = $this->getNewToken();
-            $this->cache->set('OpenApiToken', $this->token);
+            $this->cache->set('OpenApiToken ' . $this->appID, $this->token);
             $response = $this->sendRequest($method, $model, $params);
         }
         if ($statusCode === 500) {
