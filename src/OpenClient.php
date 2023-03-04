@@ -124,30 +124,32 @@ final class OpenClient
         $response = $this->sendRequest($method, $model, $params);
         # Получаем статус запроса
         $statusCode = $response->getStatusCode();
-        if ($statusCode === 400) {
-            $openError = $response->toArray(false);
-            if (array_key_exists('error', $openError)) {
-                $this->log('error', $openError["error"]["text"], $openError);
-                throw new JsonException($openError["error"]["text"], $openError["error"]["code"]);
-            }
+        switch ($statusCode) {
+            case 200:
+                #false - убрать throw Exception от Symfony.....
+                return $response->toArray(false);
+            case 400:
+                return [
+                    'response' => json_decode($response->getContent(false), true),
+                    'code' => $statusCode
+                ];
+            case 401:
+                # Токен просрочен
+                $ffdError = $response->toArray(false);
+                if (array_key_exists('result', $ffdError)) {
+                    $this->log('error', $ffdError["message"], $ffdError);
+                    throw new JsonException($ffdError["message"], $ffdError["result"]);
+                }
+                $this->token = $this->getNewToken();
+                $this->cache->set('OpenApiToken ' . $this->appID, $this->token);
+                return $this->sendRequest($method, $model, $params)->toArray(false);
+            case 500:
+                $this->log('critical', "SDK. 500 Internal Server Error", [$response->getContent(false)]);
+                throw new JsonException("SDK. 500 Internal Server Error", 500);
+            default:
+                $this->log('error', "SDK. Ошибка Open: ", [$response->getContent(false)]);
+                throw new JsonException("SDK. Ошибка Open: " . $response->getContent(false), $response->getStatusCode());
         }
-        # Токен просрочен
-        if ($statusCode === 401) {
-            $ffdError = $response->toArray(false);
-            if (array_key_exists('result', $ffdError)) {
-                $this->log('error', $ffdError["message"], $ffdError);
-                throw new JsonException($ffdError["message"], $ffdError["result"]);
-            }
-            $this->token = $this->getNewToken();
-            $this->cache->set('OpenApiToken ' . $this->appID, $this->token);
-            $response = $this->sendRequest($method, $model, $params);
-        }
-        if ($statusCode === 500) {
-            $this->log('critical', "500 Internal Server Error", [$response->getContent(false)]);
-            throw new JsonException("500 Internal Server Error", 500);
-        }
-        #false - убрать throw Exception от Symfony.....
-        return $response->toArray(false);
     }
 
     /**
