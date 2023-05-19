@@ -97,7 +97,7 @@ final class OpenClient
                         'Content-Type' => 'application/json'
                     ]
                 ]
-            );
+        );
         # Сохраняем токен в файловый кэш
         $this->cache = $cacheInterface ?? new SimpleFileCache();
         if ($this->cache->has('OpenApiToken ' . $this->appID)) {
