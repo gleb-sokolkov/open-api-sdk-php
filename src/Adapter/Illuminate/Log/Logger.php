@@ -67,6 +67,11 @@ class Logger implements LogInterface
         $this->logger = new MonologLogger('OpenApiSDK');
     }
 
+    public function debug(string $message, array $context = []): void
+    {
+        $this->writeLog('debug', $message, $context);
+    }
+
     public function info(string $message, array $context = []): void
     {
         $this->writeLog('info', $message, $context);

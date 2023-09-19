@@ -161,8 +161,17 @@ final class OpenClient
             case 422:
             case 200:
                 return;
+            case 403:
+                $this->log('debug', 'Доступ к запрошенному ресурсу запрещен.', [
+                    'response' => $response->toArray(false),
+                    'status_code' => $response->getStatusCode(),
+                ]);
+
+                $this->refreshToken();
+                return;
+
             case 401:
-                $this->log('debug', 'Токен просрочен.', [
+                $this->log('info', 'Токен просрочен.', [
                     'response' => $response->toArray(false),
                     'status_code' => $response->getStatusCode(),
                 ]);
