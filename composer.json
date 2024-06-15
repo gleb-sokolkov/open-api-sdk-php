@@ -1,10 +1,14 @@
 {
-  "name": "business-ru/open-api-sdk-php",
-  "version": "1.0.12",
-  "description": "SDK для работы с Open API",
+  "name": "gleb-sokolkov/open-api-sdk-php",
+  "version": "1.0.0",
+  "description": "Форк SDK с обновленными зависимостями для Laravel v10",
   "type": "library",
   "license": "proprietary",
   "authors": [
+    {
+      "name": "Gleb Sokolkov",
+      "email": "zmihpog@gmail.com"
+    },
     {
       "name": "Alexandr Nikitin",
       "email": "a.nikitin@mail.business.ru"
@@ -16,19 +20,16 @@
     }
   },
   "require": {
-    "php": ">=7.4",
+    "php": "^8.1",
     "ext-curl": "*",
     "ext-json": "*",
-    "symfony/http-client": "^5.3",
-    "psr/simple-cache": "^1.0",
-    "psr/log": "^1.0",
-    "monolog/monolog": "^2.6"
+    "symfony/http-client": "^6.2",
+    "psr/simple-cache": "1.0|2.0|3.0",
+    "psr/log": "1.0|2.0|3.0"
   },
   "autoload": {
     "psr-4": {
-      "Open\\Api\\": "src/",
-      "Open\\Api\\Adapter\\": "src/Adapter/",
-      "Open\\Api\\Adapter\\IlluminateOpenApi\\": "src/Adapter/Illuminate/"
+      "BusinessRU\\Open\\Api\\": "src/"
     }
   }
 }

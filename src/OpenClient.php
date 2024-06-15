@@ -1,8 +1,8 @@
 <?php
 
-namespace Open\Api;
+namespace BusinessRU\Open\Api;
 
-use Open\Api\Adapter\IlluminateOpenApi\Log\Logger;
+use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\HttpClient\Exception\JsonException;
 use Symfony\Component\HttpClient\Exception\ServerException;
@@ -18,41 +18,6 @@ use Throwable;
 final class OpenClient
 {
     /**
-     * Предоставляет гибкие методы для синхронного или асинхронного запроса ресурсов HTTP.
-     * @var HttpClientInterface|null
-     */
-    private ?HttpClientInterface $client;
-
-    /**
-     * Url аккаунта Open API
-     * @var string
-     */
-    private string $account;
-
-    /**
-     * Токен аккаунта
-     * @var string
-     */
-    private string $token;
-
-    /**
-     * app_id интеграции
-     * @var mixed $appID
-     */
-    private $appID;
-
-    /**
-     * Secret key интеграции
-     * @var false|string $secret
-     */
-    private $secret;
-
-    /**
-     * @var CacheInterface|null
-     */
-    private ?CacheInterface $cache;
-
-    /**
      * SymfonyHttpClient constructor.
      * @param string $account - url аккаунта
      * @param string $appID - app_id интеграции
@@ -61,15 +26,13 @@ final class OpenClient
      * @param CacheInterface|null $cache
      */
     public function __construct(
-        string $account,
-        string $appID,
-        string $secret,
-        ?HttpClientInterface $client = null,
-        ?CacheInterface $cache = null
+        private string $account,
+        private string $appID,
+        private string $secret,
+        private ?CacheInterface $cache = new SimpleFileCache(),
+        private LoggerInterface $logger = new StubLogger(),
+        private ?HttpClientInterface $client = null,
     ) {
-        $this->appID = $appID;
-        $this->secret = $secret;
-        $this->account = $account;
         $this->client = $client ?? HttpClient::createForBaseUri($account, [
             'headers' => [
                 'Accept' => 'application/json',
@@ -77,8 +40,6 @@ final class OpenClient
             ],
             'http_version' => '2.0'
         ]);
-
-        $this->cache = $cache ?? new SimpleFileCache();
 
         $this->initToken();
     }
@@ -162,7 +123,7 @@ final class OpenClient
             case 200:
                 return;
             case 403:
-                $this->log('debug', 'Доступ к запрошенному ресурсу запрещен.', [
+                $this->logger->debug('Доступ к запрошенному ресурсу запрещен.', [
                     'response' => $response->toArray(false),
                     'status_code' => $response->getStatusCode(),
                 ]);
@@ -171,7 +132,7 @@ final class OpenClient
                 return;
 
             case 401:
-                $this->log('info', 'Токен просрочен.', [
+                $this->logger->info('Токен просрочен.', [
                     'response' => $response->toArray(false),
                     'status_code' => $response->getStatusCode(),
                 ]);
@@ -179,10 +140,10 @@ final class OpenClient
                 $this->refreshToken();
                 return;
             case 500:
-                $this->log('critical', "SDK. Ошибка Open Api. 500 Internal Server Error", $response->toArray(false));
+                $this->logger->critical("SDK. Ошибка Open Api. 500 Internal Server Error", $response->toArray(false));
                 throw new ServerException($response);
             default:
-                $this->log('error', "SDK. Ошибка Open Api: ", $response->toArray(false));
+                $this->logger->error("SDK. Ошибка Open Api: ", $response->toArray(false));
                 throw new JsonException($response->getContent(false), $statusCode);
         }
     }
@@ -325,7 +286,7 @@ final class OpenClient
                 ]
             )['token'];
         } catch (Throwable $throwable) {
-            $this->log('error', 'Ошибка при получении токена', [
+            $this->logger->error('Ошибка при получении токена', [
                 'code' => $throwable->getCode(),
                 'line' => $throwable->getLine(),
                 'message' => $throwable->getMessage()
@@ -354,11 +315,5 @@ final class OpenClient
     private function getNonce(): string
     {
         return "nonce_" . str_replace(".", "", microtime(true));
-    }
-
-    private function log(string $level, string $message, array $context = []): void
-    {
-        $logger = new Logger();
-        $logger->$level($message, $context);
     }
 }

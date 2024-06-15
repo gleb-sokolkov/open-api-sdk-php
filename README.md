@@ -1,4 +1,6 @@
-# open-api-sdk-php
+# Форк business-ru/open-api-sdk-php для совместимости с Laravel v10
+
+Ссылка на оригинальный пакет: https://github.com/business-ru/open-api-sdk-php
 
 ## О проекте
 
@@ -31,7 +33,7 @@ require_once $projectDIR . '/vendor/autoload.php';
 # Подключение библиотеки Open Api Client
 require_once $projectDIR . '/vendor/business-ru/open-api-sdk-php/src/OpenClient.php';
 
-use Open\Api\OpenClient;
+use BusinessRU\Open\Api\OpenClient;
 
 
 # Для ФФД /v1/ - 1.05

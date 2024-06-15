@@ -1,9 +1,9 @@
 <?php
 
-namespace Open\Api;
+namespace BusinessRU\Open\Api;
 
 use DateInterval;
-use Open\Api\Exception\SimpleFileCacheException;
+use BusinessRU\Open\Api\Exception\SimpleFileCacheException;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -37,7 +37,7 @@ final class SimpleFileCache implements CacheInterface
      * @return false|string
      * @throws SimpleFileCacheException
      */
-    public function get($key, $default = null)
+    public function get($key, $default = null): mixed
     {
         if (!is_string($key)) {
             throw new SimpleFileCacheException('Ключ должен быть строкой');
@@ -98,22 +98,22 @@ final class SimpleFileCache implements CacheInterface
         return false;
     }
 
-    public function clear()
+    public function clear(): bool
     {
         // TODO: Implement clear() method.
     }
 
-    public function getMultiple($keys, $default = null)
+    public function getMultiple($keys, $default = null): iterable
     {
         // TODO: Implement getMultiple() method.
     }
 
-    public function setMultiple($values, $ttl = null)
+    public function setMultiple($values, $ttl = null): bool
     {
         // TODO: Implement setMultiple() method.
     }
 
-    public function deleteMultiple($keys)
+    public function deleteMultiple($keys): bool
     {
         // TODO: Implement deleteMultiple() method.
     }

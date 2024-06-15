@@ -3,3 +3,5 @@
 /src/cache/
 composer.lock
 /lsp/
+
+test.php
