@@ -14,7 +14,7 @@
 ## Установка
 
 ```
-composer require business-ru/open-api-sdk-php
+composer require gleb-sokolkov/open-api-sdk-php
 ```
 
 Документация: https://app.swaggerhub.com/apis/Business.Ru/check.business.ru/
