@@ -2,6 +2,7 @@
 
 namespace BusinessRU\Open\Api;
 
+use BusinessRU\Open\Api\Requests\DataCommandFilterRequest;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\HttpClient\Exception\JsonException;
@@ -26,13 +27,14 @@ final class OpenClient
      * @param CacheInterface|null $cache
      */
     public function __construct(
-        private string $account,
-        private string $appID,
-        private string $secret,
-        private ?CacheInterface $cache = new SimpleFileCache(),
-        private LoggerInterface $logger = new StubLogger(),
+        private string               $account,
+        private string               $appID,
+        private string               $secret,
+        private ?CacheInterface      $cache = new SimpleFileCache(),
+        private LoggerInterface      $logger = new StubLogger(),
         private ?HttpClientInterface $client = null,
-    ) {
+    )
+    {
         $this->client = $client ?? HttpClient::createForBaseUri($account, [
             'headers' => [
                 'Accept' => 'application/json',
@@ -268,6 +270,19 @@ final class OpenClient
                 "token" => $this->token,
                 "app_id" => $this->appID
             ]
+        );
+    }
+
+    public function dataCommand(DataCommandFilterRequest $request)
+    {
+        return $this->get(
+            "Command",
+            [
+                ...$request->toArray(),
+                "nonce" => $this->getNonce(),
+                "app_id" => $this->appID,
+                "token" => $this->token,
+            ],
         );
     }
 
