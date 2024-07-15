@@ -1,6 +1,6 @@
 {
   "name": "gleb-sokolkov/open-api-sdk-php",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Форк SDK с обновленными зависимостями для Laravel v10",
   "type": "library",
   "license": "proprietary",
